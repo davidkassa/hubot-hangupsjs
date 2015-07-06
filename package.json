@@ -1,0 +1,38 @@
+{
+  "name": "hubot-hangupsjs",
+  "version": "0.0.0",
+  "description": "Hubot Adapter for Google Hangouts",
+  "main": "index.coffee",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/davidkassa/hubot-hangupsjs.git"
+  },
+  "keywords": [
+    "hubot",
+    "g+",
+    "hangups",
+    "hangupsjs",
+    "hubot-scripts",
+    "ingress",
+    "google"
+  ],
+  "author": {
+    "name": "David Kassa",
+    "url": "https://github.com/davidkassa"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/davidkassa/hubot-hangupsjs/issues"
+  },
+  "dependencies": {
+    "bluebird": "^2.9.32",
+    "coffee-script": "~1.6",
+    "hangupsjs": "git://github.com/algesten/hangupsjs.git",
+    "log": "1.4.0"
+  },
+  "devDependencies": {
+    "hubot": "^2.13.2",
+    "parent-require": "^1.0.0"
+  },
+  "homepage": "https://github.com/davidkassa/hubot-hangupsjs"
+}

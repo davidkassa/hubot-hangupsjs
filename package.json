@@ -28,10 +28,13 @@
     "bluebird": "^2.9.32",
     "coffee-script": "~1.6",
     "hangupsjs": "git://github.com/algesten/hangupsjs.git",
-    "log": "1.4.0"
+    "log": "1.4.0",
+    "valid-url": "^1.0.9"
+  },
+  "peerDependencies": {
+    "hubot": ">=2.0"
   },
   "devDependencies": {
-    "hubot": "^2.13.2",
     "parent-require": "^1.0.0"
   },
   "homepage": "https://github.com/davidkassa/hubot-hangupsjs"

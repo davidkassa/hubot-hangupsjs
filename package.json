@@ -27,7 +27,7 @@
   "dependencies": {
     "bluebird": "^2.9.32",
     "coffee-script": "~1.6",
-    "hangupsjs": "^0.10.2",
+    "hangupsjs": "0.10.1",
     "log": "1.4.0",
     "valid-url": "^1.0.9"
   },

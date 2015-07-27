@@ -28,7 +28,9 @@
     "bluebird": "^2.9.32",
     "coffee-script": "~1.6",
     "hangupsjs": "^1.0.1",
+    "is-image": "^1.0.1",
     "log": "1.4.0",
+    "normalize-newline": "^1.0.2",
     "valid-url": "^1.0.9"
   },
   "peerDependencies": {

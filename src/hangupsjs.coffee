@@ -1,5 +1,7 @@
 util = require 'util'
 validUrl = require 'valid-url'
+isImage = require 'is-image'
+normalizeNewline = require 'normalize-newline'
 try
   {Adapter, TextMessage, EnterMessage, LeaveMessage, TopicMessage, User} = require 'hubot'
 catch
@@ -81,7 +83,8 @@ class HangupsJS extends Adapter
     return if msg.sender_id.chat_id == @self.self_entity.id.chat_id
     return if not msg.chat_message.message_content.segment #currently don't support attachments
 
-    Promise.join @getSender(msg), msg, (user, msg) =>
+    Promise.join @getSender(msg), msg, (users, msg) =>
+      user = users[0]
       msgSegment = msg.chat_message.message_content.segment
       @robot.logger.debug msgSegment
 
@@ -111,11 +114,13 @@ class HangupsJS extends Adapter
       Promise.join @getUsers(participant.chat_id), (userList) =>
         user = userList[0]
         if msg.membership_change.type == "JOIN"
-          updateUsers userList
+          @updateUsers userList
+          user.room = msg.conversation_id.id # try to keep room out of brain
           m = new EnterMessage(user, null, msg.event_id)
-        else if msg.membership_change.type == "LEAVE" then m = new LeaveMessage(user, null, msg.event_id)
+        else if msg.membership_change.type == "LEAVE"
+          user.room = msg.conversation_id.id
+          m = new LeaveMessage(user, null, msg.event_id)
 
-        user.room = msg.conversation_id.id
         @receive m
         @updateWatermark msg
       .catch (error) =>
@@ -175,10 +180,15 @@ class HangupsJS extends Adapter
     @robot.logger.debug 'Send'
     builder = new HangupsClient.MessageBuilder()
     for msg in strings
-      if validUrl.isUri(msg)
+      if isImage(msg) # todo, handle images better
+        builder.link(msg,msg)
+      else if validUrl.isUri(msg)
         builder.link(msg,msg)
       else
-        builder.text msg
+        msgArray = normalizeNewline(msg).split("\n")
+        for m, i in msgArray    
+          builder.text m
+          if i != msgArray.length - 1 then builder.linebreak()
 
     @client.sendchatmessage envelope.room, builder.toSegments()
     

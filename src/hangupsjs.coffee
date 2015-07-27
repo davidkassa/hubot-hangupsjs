@@ -23,7 +23,11 @@ class HangupsJS extends Adapter
     
     @client = new HangupsClient()
     
-    @client.loglevel @robot.logger.level
+    #TODO: 7 = DEBUG, 6 = INFO, ... 4 = WARNING, 3 = ERROR
+    #@client.loglevel @robot.logger.level
+    
+    @initUserList = []
+    @robot.brain.on 'loaded', @.brainLoaded
     
     @client.on 'connecting', @.connecting
     @client.on 'connected', @.connected
@@ -36,17 +40,32 @@ class HangupsJS extends Adapter
     @creds = -> auth: () -> process.env.HUBOT_GOOGLE_AUTH_TOKEN || HangupsClient.authStdin()
     @client.connect @creds
 
+  brainLoaded: =>
+    @robot.logger.info 'Brain Loaded...updating user list'
+    @updateUsers @initUserList
+
   connecting: =>
     @robot.logger.info 'Client Connecting'
 
   connected: =>
     @robot.logger.info 'Client Connected'
-    @client.setpresence(true).then( (res) => @robot.logger.debug res)
-    
+    @client.setpresence(true)
     @client.getselfinfo().then( (self) =>
       @robot.logger.debug self
       @self = self
+    ).then( () => 
       @emit "connected" # Tell Hubot we're connected so it can load scripts
+    ).then( () =>
+      #reach into init object for all conversations
+      chatIds = []
+      for cs in @client.init.conv_states
+        chatIds = chatIds.concat(cs.conversation.current_participant.map((o) -> o.chat_id))
+      chatIds = chatIds.filter( (val, index, self) -> index == self.indexOf(val) )
+
+      @getUsers(chatIds).then( (users) => 
+        @initUserList = users #stash users for delayed brain load
+        @updateUsers(users) #update users for synchronous brain
+      )
     ).catch (error) =>
       @robot.logger.error error
 
@@ -88,8 +107,12 @@ class HangupsJS extends Adapter
     @robot.logger.info msg
     
     for participant in msg.membership_change.participant_ids
-      Promise.join @getUser(participant.chat_id), (user) =>
-        if msg.membership_change.type == "JOIN" then m = new EnterMessage(user, null, msg.event_id)
+      #TODO: batch participants
+      Promise.join @getUsers(participant.chat_id), (userList) =>
+        user = userList[0]
+        if msg.membership_change.type == "JOIN"
+          updateUsers userList
+          m = new EnterMessage(user, null, msg.event_id)
         else if msg.membership_change.type == "LEAVE" then m = new LeaveMessage(user, null, msg.event_id)
 
         user.room = msg.conversation_id.id
@@ -113,16 +136,30 @@ class HangupsJS extends Adapter
 
 
   getSender: (msg) =>
-    @getUser(msg.sender_id.chat_id)
+    @getUsers(msg.sender_id.chat_id)
 
-  getUser: (userId) =>
-    @client.getentitybyid([userId]).then (res) => 
-     for entity in res.entities
-       @robot.logger.debug entity.properties
-       @robot.logger.debug entity.properties.emails
-      senderProps = res.entities[0].properties
-      new User(userId, {first_name: senderProps.first_name, name: senderProps.display_name
-      display_name: senderProps.display_name, photo_url: senderProps.photo_url, emails: senderProps.emails })
+  getUsers: (userIds) =>
+    @robot.logger.debug 'getUsers'
+
+    @client.getentitybyid([].concat(userIds)).then (res) => 
+      for entity in res.entities
+        @robot.logger.debug entity.id.chat_id
+        @robot.logger.debug entity.properties
+        @robot.logger.debug entity.properties.emails
+        userProps = entity.properties
+        new User(entity.id.chat_id, {first_name: userProps.first_name, name: userProps.display_name
+        display_name: userProps.display_name, photo_url: userProps.photo_url, emails: userProps.emails })
+
+  updateUsers: (users) =>
+    @robot.logger.debug 'updateUsers'
+
+    for user in [].concat(users)
+      if user.id of @robot.brain.data.users
+        for key, value of @robot.brain.data.users[user.id]
+          unless key of user
+            user[key] = value
+      delete @robot.brain.data.users[user.id]
+      @robot.brain.userForId user.id, user
 
   updateWatermark: (msg) =>
     @client.updatewatermark(msg.conversation_id.id, msg.timestamp / 1000)#.then( (res) => @robot.logger.debug res)
